@@ -1,3 +1,4 @@
+package src.main.co.conciliacion.legacy;
 import java.time.OffsetDateTime;
 
 /** Una linea de pago tal como la entrega Tesoreria en el archivo plano. */
