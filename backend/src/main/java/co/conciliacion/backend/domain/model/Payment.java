@@ -3,7 +3,7 @@ package co.conciliacion.backend.domain.model;
 import java.time.OffsetDateTime;
 import java.util.Objects;
 
-/** Pago dirigido a una factura. La unicidad de la referencia (RF-12) se resuelve en la fase 2. */
+/** Pago dirigido a una factura */
 public record Payment(String reference, String invoiceNumber, Money amount, OffsetDateTime paidAt) {
 
     public Payment {

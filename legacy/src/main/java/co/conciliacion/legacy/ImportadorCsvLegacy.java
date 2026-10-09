@@ -42,10 +42,7 @@ public class ImportadorCsvLegacy {
         "referencia", "numero_factura", "valor", "fecha_pago"
     };
 
-    /**
-     * Lee el archivo completo y devuelve las lineas de pago que contiene.
-     * Si el archivo no cumple el formato acordado, se rechaza entero.
-     */
+
     public ResultadoImportacion importar(Path archivo) {
         byte[] bytes;
         try {
@@ -90,7 +87,6 @@ public class ImportadorCsvLegacy {
         return ResultadoImportacion.aceptado(pagos, rechazadas, advertencias);
     }
 
-    /** UTF-8 estricto; si falla, Windows-1252 con advertencia. */
     private String decodificar(byte[] bytes, List<String> advertencias) {
         try {
             return StandardCharsets.UTF_8.newDecoder()
@@ -159,7 +155,6 @@ public class ImportadorCsvLegacy {
         pagos.add(new LineaPago(referencia, numeroFactura, valor, fecha));
     }
 
-    /** trim() no quita el espacio no separable (U+00A0) que suele venir de Excel. */
     private String limpiar(String texto) {
         return texto.replace('\u00A0', ' ').strip();
     }
