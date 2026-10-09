@@ -38,3 +38,12 @@ Los archivos de desarrollo se generan por script: ASCII puro, sin BOM, con datos
 - Hay rechazo del archivo entero solo si está vacío, el encabezado es inválido, es ilegible o supera 100.000 líneas con contenido.
 - Valores solo con dígitos ASCII y mayores que cero.
 - El número de línea es físico, con el encabezado como línea 1.
+
+### Backend
+
+BigDecimal con RoundingMode.UNNECESSARY: un valor con más de 2 decimales falla en vez de redondearse. Redondear en silencio es plata perdida o inventada.
+Factura inmutable: applyPayment devuelve una factura nueva. La alternativa mutable es más corta, pero facilita errores de concurrencia (CF-04).
+Payment con Money, no long: RF-10 pide enteros, pero eso es una regla de entrada. La validación de enteros va en el borde (API y CSV), y el dominio sigue con una sola representación del dinero.
+CF-01, lectura literal: un pago de 37.500.483 sobre saldo 37.500.483,40 se aplica y deja 0,40. Es consecuencia directa de RF-09 y RF-10, pero ahí la factura queda PARCIAL con 40 centavos que Tesorería no puede pagar nunca, porque solo opera en enteros. Es la contradicción más importante del enunciado. Mi propuesta: que PAGADA se defina como saldo < 1 peso, o un umbral explícito, y que quede documentado. Lo decidimos en la fase 2 con RF-03.
+Rechazo como valor, no excepción: PaymentResult es un sealed interface. RF-21 pide reportar cada línea, y con excepciones un lote de 50.000 líneas pagaría el costo de crearlas.
+Puerto findByNumberForUpdate: ya anticipa el bloqueo pesimista de la fase 2.
