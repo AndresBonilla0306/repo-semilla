@@ -121,4 +121,5 @@ class ApplyPaymentServiceTest {
         PaymentResult retry = service.apply(payment("P-9", "FV-1", "1000"));
         assertInstanceOf(PaymentResult.Applied.class, retry);
     }
+    
 }

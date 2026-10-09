@@ -55,3 +55,8 @@ Decisión: el orden es bloquear la factura y luego revisar la referencia, no al 
 Decisión: la referencia de un pago rechazado queda libre. Es una lectura de “aplicarse dos veces” que conviene confirmar con el negocio.
 Limitación: si dos peticiones concurrentes usan la misma referencia sobre facturas distintas, no comparten bloqueo. Ahí la defensa es la clave primaria, que lanza una excepción en vez de un rechazo limpio. Para cerrarlo haría falta un INSERT ... ON CONFLICT DO NOTHING y revisar cuántas filas insertó.
 Limitación: save de Spring Data con id asignado hace un SELECT antes del INSERT. Para 50.000 líneas conviene un insert por lotes con JdbcTemplate, y eso va con los lotes.
+
+Montos como string en el JSON. Esto cierra RF-05, porque los números JSON se leen como double en JavaScript y pierden precisión.
+RF-10 se valida en el borde. amount solo acepta dígitos ("37500483"). "100.50" responde 400 sin llegar al dominio.
+Una línea rechazada responde 422 con reason y detail en el cuerpo, no 404 ni 409. Así el formato es el mismo cuando lleguen los lotes (RF-21). Solicitud mal formada responde 400.
+La paginación ordena por number, que es único e inmutable. Aplicar pagos no mueve las filas de lugar, así que recorrer las páginas no repite ni omite facturas (PR-03, parcialmente).

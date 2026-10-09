@@ -59,6 +59,13 @@ public final class Invoice {
         return new Invoice(number, supplierNit, supplierName, issueDate, dueDate, total, balance.minus(amount));
     }
 
+    /** Estado derivado del saldo (RF-14). PAGADA_EXTEMPORANEA queda fuera de este alcance. */
+    public InvoiceStatus status() {
+        if (balance.isZero()) return InvoiceStatus.PAID;
+        if (balance.equals(total)) return InvoiceStatus.PENDING;
+        return InvoiceStatus.PARTIAL;
+    }
+
     private static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " es obligatorio");

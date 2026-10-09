@@ -1,0 +1,1 @@
+CREATE INDEX ix_invoice_nit ON invoice (supplier_nit, number);

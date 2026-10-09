@@ -37,4 +37,12 @@ class InvoiceTest {
         assertThrows(IllegalArgumentException.class, () -> Invoice.issue("FV-1", "1", "X",
             LocalDate.of(2026, 3, 15), LocalDate.of(2026, 3, 1), Money.of("10")));
     }
+
+    @Test
+    void statusIsDerivedFromBalance() {
+        Invoice i = invoice("100");
+        assertEquals(InvoiceStatus.PENDING, i.status());
+        assertEquals(InvoiceStatus.PARTIAL, i.applyPayment(Money.of("40")).status());
+        assertEquals(InvoiceStatus.PAID, i.applyPayment(Money.of("100")).status());
+    }
 }
