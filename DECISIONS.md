@@ -47,3 +47,11 @@ Payment con Money, no long: RF-10 pide enteros, pero eso es una regla de entrada
 CF-01, lectura literal: un pago de 37.500.483 sobre saldo 37.500.483,40 se aplica y deja 0,40. Es consecuencia directa de RF-09 y RF-10, pero ahí la factura queda PARCIAL con 40 centavos que Tesorería no puede pagar nunca, porque solo opera en enteros. Es la contradicción más importante del enunciado. Mi propuesta: que PAGADA se defina como saldo < 1 peso, o un umbral explícito, y que quede documentado. Lo decidimos en la fase 2 con RF-03.
 Rechazo como valor, no excepción: PaymentResult es un sealed interface. RF-21 pide reportar cada línea, y con excepciones un lote de 50.000 líneas pagaría el costo de crearlas.
 Puerto findByNumberForUpdate: ya anticipa el bloqueo pesimista de la fase 2.
+
+
+Testcontainers fijado en 1.21.4 por propiedad: la 1.21.0 que trae Spring Boot 3.5 por defecto no se entendía con la API del Docker Desktop actual (respuesta 400 con campos vacíos). Alternativa descartada: saltar a Testcontainers 2.x, que renombra los artefactos y habría cambiado más cosas de las necesarias.
+
+Decisión: el orden es bloquear la factura y luego revisar la referencia, no al revés. La alternativa era confiar solo en la clave primaria y capturar la excepción, pero eso deja la transacción en rollback y entrega un error en vez de un rechazo explicable.
+Decisión: la referencia de un pago rechazado queda libre. Es una lectura de “aplicarse dos veces” que conviene confirmar con el negocio.
+Limitación: si dos peticiones concurrentes usan la misma referencia sobre facturas distintas, no comparten bloqueo. Ahí la defensa es la clave primaria, que lanza una excepción en vez de un rechazo limpio. Para cerrarlo haría falta un INSERT ... ON CONFLICT DO NOTHING y revisar cuántas filas insertó.
+Limitación: save de Spring Data con id asignado hace un SELECT antes del INSERT. Para 50.000 líneas conviene un insert por lotes con JdbcTemplate, y eso va con los lotes.

@@ -78,4 +78,33 @@ class ApplyPaymentIntegrationTest {
         assertTrue(balance().compareTo(new BigDecimal("30.00")) == 0
                 || balance().compareTo(new BigDecimal("40.00")) == 0);
     }
+
+        @Test // RF-12 contra la base real
+    void sameReferenceCannotBeAppliedTwice() {
+        assertInstanceOf(PaymentResult.Applied.class, useCase.apply(payment("P-1", "40")));
+        PaymentResult second = useCase.apply(payment("P-1", "40"));
+        assertEquals(RejectionReason.DUPLICATE_REFERENCE,
+            assertInstanceOf(PaymentResult.Rejected.class, second).reason());
+        assertEquals(new BigDecimal("60.00"), balance());
+        assertEquals(1, jdbc.queryForObject("select count(*) from payment", Integer.class));
+    }
+
+    @Test // dos hilos con la MISMA referencia: gracias al bloqueo, solo uno la aplica
+    void concurrentSameReferenceIsAppliedOnce() throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<PaymentResult>> futures = List.of(
+            pool.submit(() -> { start.await(); return useCase.apply(payment("P-X", "40")); }),
+            pool.submit(() -> { start.await(); return useCase.apply(payment("P-X", "40")); }));
+        start.countDown();
+
+        long applied = 0;
+        for (Future<PaymentResult> f : futures) {
+            if (f.get(10, TimeUnit.SECONDS) instanceof PaymentResult.Applied) applied++;
+        }
+        pool.shutdown();
+
+        assertEquals(1, applied);
+        assertEquals(new BigDecimal("60.00"), balance());
+    }
 }

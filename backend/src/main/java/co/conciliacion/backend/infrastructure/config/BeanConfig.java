@@ -2,8 +2,10 @@ package co.conciliacion.backend.infrastructure.config;
 
 import co.conciliacion.backend.application.port.in.ApplyPaymentUseCase;
 import co.conciliacion.backend.application.port.out.InvoiceRepository;
+import co.conciliacion.backend.application.port.out.PaymentRepository;
 import co.conciliacion.backend.application.service.ApplyPaymentService;
 import co.conciliacion.backend.infrastructure.transaction.TransactionalApplyPaymentUseCase;
+import co.conciliacion.backend.application.port.out.PaymentRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,7 +13,7 @@ import org.springframework.context.annotation.Configuration;
 public class BeanConfig {
 
     @Bean
-    public ApplyPaymentUseCase applyPaymentUseCase(InvoiceRepository invoices) {
-        return new TransactionalApplyPaymentUseCase(new ApplyPaymentService(invoices));
-    }
+    public ApplyPaymentUseCase applyPaymentUseCase(InvoiceRepository invoices, PaymentRepository payments) {
+    return new TransactionalApplyPaymentUseCase(new ApplyPaymentService(invoices, payments));
+}
 }

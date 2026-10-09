@@ -3,18 +3,16 @@ package co.conciliacion.backend.application.service;
 import static org.junit.jupiter.api.Assertions.*;
 
 import co.conciliacion.backend.application.port.out.InvoiceRepository;
+import co.conciliacion.backend.application.port.out.PaymentRepository;
 import co.conciliacion.backend.domain.model.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ApplyPaymentServiceTest {
 
-    /** Repositorio en memoria solo para pruebas: el dominio no necesita base de datos. */
     static class FakeInvoiceRepository implements InvoiceRepository {
         final Map<String, Invoice> store = new HashMap<>();
         int saves = 0;
@@ -28,19 +26,36 @@ class ApplyPaymentServiceTest {
         }
     }
 
+    static class FakePaymentRepository implements PaymentRepository {
+        final Map<String, Payment> store = new HashMap<>();
+
+        @Override public boolean existsByReference(String reference) {
+            return store.containsKey(reference);
+        }
+        @Override public void save(Payment payment) {
+            store.put(payment.reference(), payment);
+        }
+    }
+
     private FakeInvoiceRepository repo;
+    private FakePaymentRepository paymentRepo;
     private ApplyPaymentService service;
 
     @BeforeEach
     void setUp() {
         repo = new FakeInvoiceRepository();
-        service = new ApplyPaymentService(repo);
+        paymentRepo = new FakePaymentRepository();
+        service = new ApplyPaymentService(repo, paymentRepo);
         repo.store.put("FV-1", Invoice.issue("FV-1", "900123456", "Proveedor SA",
             LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 15), Money.of("37500483.40")));
     }
 
     private Payment payment(String invoice, String amount) {
-        return new Payment("P-1", invoice, Money.of(amount), OffsetDateTime.parse("2026-03-15T10:00:00-05:00"));
+        return payment("P-1", invoice, amount);
+    }
+
+    private Payment payment(String reference, String invoice, String amount) {
+        return new Payment(reference, invoice, Money.of(amount), OffsetDateTime.parse("2026-03-15T10:00:00-05:00"));
     }
 
     @Test
@@ -50,6 +65,12 @@ class ApplyPaymentServiceTest {
         assertEquals(Money.of("37499483.40"), applied.invoice().balance());
         assertEquals(Money.of("37500483.40"), applied.previousBalance());
         assertEquals(1, repo.saves);
+    }
+
+    @Test
+    void appliedPaymentIsStored() {
+        service.apply(payment("FV-1", "1000"));
+        assertTrue(paymentRepo.existsByReference("P-1"));
     }
 
     @Test
@@ -67,12 +88,13 @@ class ApplyPaymentServiceTest {
         assertEquals(Money.of("0.40"), applied.invoice().balance());
     }
 
-    @Test // CF-02 / RF-09: se rechaza completo y el saldo no cambia (RF-11)
-    void cf02_paymentExceedingBalanceIsRejectedAndBalanceUntouched() {
+    @Test // CF-02 / RF-09 / RF-11
+    void cf02_paymentExceedingBalanceIsRejectedAndNothingIsStored() {
         PaymentResult r = service.apply(payment("FV-1", "37500484"));
         assertEquals(RejectionReason.AMOUNT_EXCEEDS_BALANCE,
             assertInstanceOf(PaymentResult.Rejected.class, r).reason());
         assertEquals(0, repo.saves);
+        assertFalse(paymentRepo.existsByReference("P-1"));
         assertEquals(Money.of("37500483.40"), repo.store.get("FV-1").balance());
     }
 
@@ -81,5 +103,22 @@ class ApplyPaymentServiceTest {
         PaymentResult r = service.apply(payment("FV-1", "37500483.40"));
         PaymentResult.Applied applied = assertInstanceOf(PaymentResult.Applied.class, r);
         assertTrue(applied.invoice().balance().isZero());
+    }
+
+    @Test // RF-12
+    void sameReferenceIsRejectedTheSecondTimeAndBalanceIsNotReduced() {
+        service.apply(payment("FV-1", "1000"));
+        PaymentResult second = service.apply(payment("FV-1", "1000"));
+        assertEquals(RejectionReason.DUPLICATE_REFERENCE,
+            assertInstanceOf(PaymentResult.Rejected.class, second).reason());
+        assertEquals(Money.of("37499483.40"), repo.store.get("FV-1").balance());
+        assertEquals(1, repo.saves);
+    }
+
+    @Test // un rechazo por saldo no "quema" la referencia
+    void referenceOfARejectedPaymentCanBeRetried() {
+        service.apply(payment("P-9", "FV-1", "99999999"));
+        PaymentResult retry = service.apply(payment("P-9", "FV-1", "1000"));
+        assertInstanceOf(PaymentResult.Applied.class, retry);
     }
 }
