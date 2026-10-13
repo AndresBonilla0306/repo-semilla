@@ -41,7 +41,7 @@ El detalle de lo recortado y el porqué está en [`LIMITACIONES.md`](LIMITACIONE
 
 ## Puesta en marcha
 
-> ⚠️ **Hoy `docker compose up` levanta únicamente la base de datos.** El backend se ejecuta con Maven y la carga de facturas es un paso manual.
+> **Hoy `docker compose up` levanta únicamente la base de datos.** El backend se ejecuta con Maven y la carga de facturas es un paso manual.
 
 Desde la raíz del repositorio, en PowerShell:
 

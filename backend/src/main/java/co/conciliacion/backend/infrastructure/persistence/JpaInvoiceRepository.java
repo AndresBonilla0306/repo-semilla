@@ -37,8 +37,9 @@ public class JpaInvoiceRepository implements InvoiceRepository, InvoiceQueryPort
         InvoiceEntity entity = jpa.findById(invoice.number())
             .orElseGet(() -> new InvoiceEntity(invoice.number(), invoice.supplierNit(),
                 invoice.supplierName(), invoice.issueDate(), invoice.dueDate(),
-                invoice.total().amount(), invoice.balance().amount()));
+                invoice.total().amount(), invoice.balance().amount(), invoice.status().name()));
         entity.setBalance(invoice.balance().amount());
+        entity.setStatus(invoice.status().name());
         jpa.save(entity);
     }
 
@@ -57,17 +58,18 @@ public class JpaInvoiceRepository implements InvoiceRepository, InvoiceQueryPort
     }
 
     private Predicate statusPredicate(InvoiceStatus status, Root<InvoiceEntity> root, CriteriaBuilder cb) {
-        Path<BigDecimal> balance = root.get("balance");
-        Path<BigDecimal> total = root.get("total");
-        return switch (status) {
-            case PAID -> cb.equal(balance, BigDecimal.ZERO);
-            case PENDING -> cb.equal(balance, total);
-            case PARTIAL -> cb.and(cb.greaterThan(balance, BigDecimal.ZERO), cb.lessThan(balance, total));
+        // Path<BigDecimal> balance = root.get("balance");
+        // Path<BigDecimal> total = root.get("total");
+        // return switch (status) {
+        //     case PAID -> cb.equal(balance, BigDecimal.ZERO);
+        //     case PENDING -> cb.equal(balance, total);
+        //     case PARTIAL -> cb.and(cb.greaterThan(balance, BigDecimal.ZERO), cb.lessThan(balance, total));
+        return cb.equal(root.get("status"), status.name());
         };
-    }
 
     private Invoice toDomain(InvoiceEntity e) {
         return Invoice.rehydrate(e.getNumber(), e.getSupplierNit(), e.getSupplierName(),
-            e.getIssueDate(), e.getDueDate(), new Money(e.getTotal()), new Money(e.getBalance()));
+            e.getIssueDate(), e.getDueDate(), new Money(e.getTotal()), new Money(e.getBalance()),
+            InvoiceStatus.valueOf(e.getStatus()));
     }
 }

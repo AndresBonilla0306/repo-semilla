@@ -135,3 +135,10 @@ Es una hipótesis razonada, no una confirmación, porque Cartera no entregó el 
 | CF-06 | A se aplica y B se rechaza (ver A2) | Sin implementar a nivel de lote |
 | CF-07 | Carga de 50.000 líneas dentro de 60 segundos | Sin implementar ni medir |
 | CF-08 | La paginación no repite ni omite facturas | Diseñada con orden por `number`. No medida |
+
+
+PAID_LATE es el cuarto estado. Ya no se puede derivar solo del saldo, porque depende de la fecha del pago que lo saldó. Por eso el estado se persiste en una columna con índice, lo que además ayuda a PR-01.
+El vencimiento se evalúa con la paidAt del pago, no con la hora del servidor, y en zona America/Bogota fija. La JVM en UTC no influye.
+Un pago es tardío si cae a partir de las 00:00 del día siguiente al vencimiento, hora de Colombia. Así evito la ambigüedad de los fracciones de segundo después de las 23:59:59.
+Un pago parcial tardío deja la factura en PARTIAL. Solo el pago que la salda decide entre PAID y PAID_LATE. Es un supuesto, anótalo en DECISIONS.md.
+CF-01 sigue literal: el residuo de 0,40 deja la factura en PARTIAL. Si quieres cambiarlo (saldo menor a 1 peso cuenta como pagada), es un cambio pequeño que hacemos después.

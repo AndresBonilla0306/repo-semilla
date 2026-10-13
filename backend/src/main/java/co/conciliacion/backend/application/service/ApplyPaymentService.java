@@ -38,7 +38,7 @@ public class ApplyPaymentService implements ApplyPaymentUseCase {
             return new PaymentResult.Rejected(RejectionReason.AMOUNT_EXCEEDS_BALANCE,
                 "El pago " + payment.amount() + " excede el saldo pendiente " + invoice.balance());
         }
-        Invoice updated = invoice.applyPayment(payment.amount());
+        Invoice updated = invoice.applyPayment(payment.amount(), payment.paidAt());
         invoices.save(updated);
         payments.save(payment);
         return new PaymentResult.Applied(updated, invoice.balance());

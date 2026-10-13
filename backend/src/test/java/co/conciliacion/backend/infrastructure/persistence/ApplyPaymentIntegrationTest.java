@@ -79,7 +79,7 @@ class ApplyPaymentIntegrationTest {
                 || balance().compareTo(new BigDecimal("40.00")) == 0);
     }
 
-        @Test // RF-12 contra la base real
+    @Test // RF-12 contra la base real
     void sameReferenceCannotBeAppliedTwice() {
         assertInstanceOf(PaymentResult.Applied.class, useCase.apply(payment("P-1", "40")));
         PaymentResult second = useCase.apply(payment("P-1", "40"));
@@ -106,5 +106,23 @@ class ApplyPaymentIntegrationTest {
 
         assertEquals(1, applied);
         assertEquals(new BigDecimal("60.00"), balance());
+    }
+
+    @Test // CF-05 de punta a punta, incluida la columna status
+    void cf05_settlingAt2330ColombiaIsPaidNotLate() {
+        Payment p = new Payment("P-C5", "FV-1", Money.of("100"),
+            OffsetDateTime.parse("2026-03-15T23:30:00-05:00"));
+        assertInstanceOf(PaymentResult.Applied.class, useCase.apply(p));
+        assertEquals("PAID",
+            jdbc.queryForObject("select status from invoice where number = 'FV-1'", String.class));
+    }
+
+    @Test
+    void settlingAfterDueDateIsPaidLate() {
+        Payment p = new Payment("P-L1", "FV-1", Money.of("100"),
+            OffsetDateTime.parse("2026-03-16T08:00:00-05:00"));
+        assertInstanceOf(PaymentResult.Applied.class, useCase.apply(p));
+        assertEquals("PAID_LATE",
+            jdbc.queryForObject("select status from invoice where number = 'FV-1'", String.class));
     }
 }

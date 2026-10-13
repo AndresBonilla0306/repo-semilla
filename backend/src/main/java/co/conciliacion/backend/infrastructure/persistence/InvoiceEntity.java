@@ -31,6 +31,9 @@ public class InvoiceEntity {
     @Column(name = "balance", nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;
 
+    @Column(name = "status", nullable = false, length = 20)
+    private String status;
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -39,7 +42,7 @@ public class InvoiceEntity {
 
     public InvoiceEntity(String number, String supplierNit, String supplierName,
                          LocalDate issueDate, LocalDate dueDate,
-                         BigDecimal total, BigDecimal balance) {
+                         BigDecimal total, BigDecimal balance, String status) {
         this.number = number;
         this.supplierNit = supplierNit;
         this.supplierName = supplierName;
@@ -47,6 +50,7 @@ public class InvoiceEntity {
         this.dueDate = dueDate;
         this.total = total;
         this.balance = balance;
+        this.status = status;
     }
 
     public String getNumber() { return number; }
@@ -57,4 +61,6 @@ public class InvoiceEntity {
     public BigDecimal getTotal() { return total; }
     public BigDecimal getBalance() { return balance; }
     public void setBalance(BigDecimal balance) { this.balance = balance; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 }
