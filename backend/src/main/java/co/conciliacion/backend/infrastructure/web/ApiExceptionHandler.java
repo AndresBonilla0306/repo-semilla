@@ -8,6 +8,9 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import co.conciliacion.backend.application.batch.BatchConflictException;
+import co.conciliacion.backend.application.batch.BatchNotFoundException;
+
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
@@ -32,5 +35,15 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> domainRule(IllegalArgumentException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
             .body(new ApiError("INVALID_REQUEST", e.getMessage()));
+    }
+
+    @ExceptionHandler(BatchConflictException.class)
+    public ResponseEntity<ApiError> batchConflict(BatchConflictException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError("BATCH_CONFLICT", e.getMessage()));
+    }
+
+    @ExceptionHandler(BatchNotFoundException.class)
+    public ResponseEntity<ApiError> batchNotFound(BatchNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("BATCH_NOT_FOUND", e.getMessage()));
     }
 }
