@@ -31,6 +31,7 @@ class ApplyPaymentIntegrationTest {
 
     @BeforeEach
     void seed() {
+        jdbc.update("delete from payment_audit");
         jdbc.update("delete from payment");
         jdbc.update("delete from invoice");
         jdbc.update("""
@@ -124,5 +125,24 @@ class ApplyPaymentIntegrationTest {
         assertInstanceOf(PaymentResult.Applied.class, useCase.apply(p));
         assertEquals("PAID_LATE",
             jdbc.queryForObject("select status from invoice where number = 'FV-1'", String.class));
+    }
+
+        @Test // la auditoria llega a la base real, con saldos exactos
+    void appliedPaymentIsAuditedInDatabase() {
+        useCase.apply(payment("P-1", "40"));
+        var row = jdbc.queryForMap(
+            "select outcome, balance_before, balance_after, performed_by from payment_audit");
+        assertEquals("APPLIED", row.get("outcome"));
+        assertEquals(new BigDecimal("100.00"), row.get("balance_before"));
+        assertEquals(new BigDecimal("60.00"), row.get("balance_after"));
+        assertEquals("tesoreria", row.get("performed_by"));
+    }
+
+    @Test // el rechazo no revierte la transaccion: la auditoria sobrevive
+    void rejectedPaymentIsAuditedAndBalanceUntouched() {
+        useCase.apply(payment("P-2", "100.01"));
+        assertEquals(1, jdbc.queryForObject(
+            "select count(*) from payment_audit where outcome = 'REJECTED'", Integer.class));
+        assertEquals(new BigDecimal("100.00"), balance());
     }
 }

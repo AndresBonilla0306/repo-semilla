@@ -4,10 +4,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import co.conciliacion.backend.application.port.out.InvoiceRepository;
 import co.conciliacion.backend.application.port.out.PaymentRepository;
+import co.conciliacion.backend.application.port.out.AuditRepository;
 import co.conciliacion.backend.domain.model.*;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.*;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -37,15 +41,25 @@ class ApplyPaymentServiceTest {
         }
     }
 
+    static class FakeAuditRepository implements AuditRepository {
+        final List<AuditEntry> entries = new ArrayList<>();
+        @Override public void record(AuditEntry entry) { entries.add(entry); }
+    }
+
+    private static final Instant NOW = Instant.parse("2026-03-15T15:00:00Z");
+
     private FakeInvoiceRepository repo;
     private FakePaymentRepository paymentRepo;
+    private FakeAuditRepository audit;
     private ApplyPaymentService service;
 
-    @BeforeEach
-    void setUp() {
+     @BeforeEach
+        void setUp() {
         repo = new FakeInvoiceRepository();
         paymentRepo = new FakePaymentRepository();
-        service = new ApplyPaymentService(repo, paymentRepo);
+        audit = new FakeAuditRepository();
+        service = new ApplyPaymentService(repo, paymentRepo, audit,
+            Clock.fixed(NOW, ZoneOffset.UTC), "test-user");
         repo.store.put("FV-1", Invoice.issue("FV-1", "900123456", "Proveedor SA",
             LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 15), Money.of("37500483.40")));
     }
@@ -120,6 +134,46 @@ class ApplyPaymentServiceTest {
         service.apply(payment("P-9", "FV-1", "99999999"));
         PaymentResult retry = service.apply(payment("P-9", "FV-1", "1000"));
         assertInstanceOf(PaymentResult.Applied.class, retry);
+    }
+
+    @Test // RF-15: aplicacion
+    void appliedPaymentIsAuditedWithBalancesUserAndInstant() {
+        service.apply(payment("FV-1", "1000"));
+        assertEquals(1, audit.entries.size());
+        AuditEntry e = audit.entries.get(0);
+        assertEquals(AuditOutcome.APPLIED, e.outcome());
+        assertEquals(Money.of("37500483.40"), e.balanceBefore());
+        assertEquals(Money.of("37499483.40"), e.balanceAfter());
+        assertEquals("test-user", e.actor());
+        assertEquals(NOW, e.occurredAt());
+        assertNull(e.reason());
+    }
+
+    @Test // RF-15 + RF-11: el rechazo se audita y el saldo no cambia
+    void rejectedForExcessIsAuditedWithSameBalanceBeforeAndAfter() {
+        service.apply(payment("FV-1", "37500484"));
+        AuditEntry e = audit.entries.get(0);
+        assertEquals(AuditOutcome.REJECTED, e.outcome());
+        assertEquals(RejectionReason.AMOUNT_EXCEEDS_BALANCE, e.reason());
+        assertEquals(Money.of("37500483.40"), e.balanceBefore());
+        assertEquals(e.balanceBefore(), e.balanceAfter());
+    }
+
+    @Test
+    void rejectedForMissingInvoiceIsAuditedWithoutBalances() {
+        service.apply(payment("FV-NOPE", "1000"));
+        AuditEntry e = audit.entries.get(0);
+        assertEquals(RejectionReason.INVOICE_NOT_FOUND, e.reason());
+        assertNull(e.balanceBefore());
+        assertNull(e.balanceAfter());
+    }
+
+    @Test
+    void duplicateReferenceIsAuditedAsRejected() {
+        service.apply(payment("FV-1", "1000"));
+        service.apply(payment("FV-1", "1000"));
+        assertEquals(2, audit.entries.size());
+        assertEquals(RejectionReason.DUPLICATE_REFERENCE, audit.entries.get(1).reason());
     }
     
 }
