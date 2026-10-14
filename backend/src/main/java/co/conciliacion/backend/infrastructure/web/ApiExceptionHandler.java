@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import co.conciliacion.backend.application.batch.BatchConflictException;
 import co.conciliacion.backend.application.batch.BatchNotFoundException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -45,5 +46,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(BatchNotFoundException.class)
     public ResponseEntity<ApiError> batchNotFound(BatchNotFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError("BATCH_NOT_FOUND", e.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiError> badParam(MethodArgumentTypeMismatchException e) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(new ApiError("INVALID_REQUEST", "Parametro invalido: " + e.getName()));
     }
 }
