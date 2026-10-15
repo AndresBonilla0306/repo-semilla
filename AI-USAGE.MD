@@ -6,9 +6,13 @@ Primeramente se montó el ambiente correspondiente, a través de la terminal de 
 
 Primero se tuvo en cuenta los códigos traido en la carpeta legacy, se hicieron las correciones a mano, pero se pasaron luego por IA para si estaban correctos, se hizo esta misma modalidad con los codigos de las carpetas backend\src\main\java\co\conciliacion\backend\domain\model, se hizo uan escritura inicial y se pasó por un filtro de IA para corregirles los errores y posibles baches
 
+Luego haber montado el proceso de docker se realizó la instalación de react y tailwind, usando una de las platillas prelliminares todo esto se creo en la carpeta frontend se hizo unas base para la visualización del proceso y se pasó por IA para que le diera un mejora, para los estilos se usaron plantillas prefabricadas
+
 # Codigo enteramente IA
 
-Se le solicitó a la IA la creación de los archivos restantes en la carpeta backend, digase los ports, la infraestructura, la application y los archivos .xml, esto teninedo en cuenta la estructura que se había montado previamente
+Se le solicitó a la IA la creación de los archivos restantes en la carpeta backend, digase los ports, la infraestructura, la application y los archivos .xml, esto teninedo en cuenta la estructura que se había montado previamente.
+
+Posteriormente se solicitó la implementación de lso servicios de docker, se crearon los repectivos servicios en el backend para su normal funcionamiento, se montaron los servicios y los scripts para hacer sus respectivas gestiones en la carpeta backend. 
 
 # Documentación
 
