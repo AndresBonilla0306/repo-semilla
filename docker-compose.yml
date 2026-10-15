@@ -1,6 +1,5 @@
-# Infraestructura base de la prueba tecnica.
-# Trae solo la base de datos: los servicios de backend y frontend los agregas tu,
-# de modo que un `docker compose up` sobre un clon limpio levante todo el sistema.
+# Sistema completo: base de datos, backend y carga inicial de datos.
+# Orden: db sana -> backend arranca (Flyway crea el esquema) -> seed-loader carga facturas.
 services:
 
   db:
@@ -13,14 +12,49 @@ services:
       - "5432:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
-      # Los CSV generados quedan visibles dentro del contenedor en /seed,
-      # por si prefieres cargarlos desde el lado del servidor.
+      # Los CSV quedan visibles dentro del contenedor en /seed (lo usa COPY del lado del servidor).
       - ./seed/out:/seed:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U conciliacion -d conciliacion"]
       interval: 5s
       timeout: 3s
       retries: 20
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/conciliacion
+      DB_USER: conciliacion
+      DB_PASSWORD: conciliacion
+    ports:
+      - "8080:8080"
+    healthcheck:
+      # El puerto solo abre cuando Flyway ya termino las migraciones.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  seed-loader:
+    image: postgres:16-alpine
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGDATABASE: conciliacion
+      PGUSER: conciliacion
+      PGPASSWORD: conciliacion
+    volumes:
+      - ./seed/out:/seed:ro
+      - ./seed/load-facturas.sql:/load/load-facturas.sql:ro
+      - ./seed/load.sh:/load/load.sh:ro
+    command: ["sh", "/load/load.sh"]
+    restart: "no"
 
 volumes:
   db-data:
